@@ -1,0 +1,145 @@
+SI 206 W17
+Put your name here:
+
+----
+
+Which option for the final project are you choosing -- 3
+
+I am choosing option 3.
+
+IF YOU ARE CHOOSING OPTION 3, answer the following questions:
+
+* Write 1-3 sentences summarizing what the goal of your project is:
+
+The goal of my project is to analyze tweets of companies with both positive and negative trending stocks. I will do sentiment analysis on those tweets to determine if there is a correlation between neagtive tweets and negative trending stock prices, and vice versa. This shold reveal if public sentiment is closley tied to all stock price trends, or if other factors may be at play.
+
+* What are your two data sources? Provide links to documentation or websites you will be getting data from.
+
+My two data sources are yahoo finance and twitter.
+Yahoo Finance: https://pypi.python.org/pypi/yahoo-finance
+Twitter: http://docs.tweepy.org/en/v3.5.0/
+
+* Why are you proposing this project?
+
+I am proposing this project because it combines my interest with learning python with my interest in business. I have recently started to follow the stock markets, and I am curious if tweets can cause stocks values to change like certain news reports potentiall can.
+
+* What will the output of this project be? What will it look like, and what information will it contain?
+
+The output of this project will be a comparison of the sentiment anaylsis of tweets regarding a certain company and its corresponding trend in stock price. It will contain information both about tweets and stock prices within the company. It will show whether or not there is a corellation between the sentiment of the tweets and the stock prices
+
+* What are your concerns about this proposal?
+
+I have a concern that this proposal is too indepth. While there is potential for this project to reveal a lot of cool information, there is the potential issue that it will require too much work to get any good, positive results.
+
+-----
+
+THE FOLLOWING QUESTIONS ARE FOR EVERYONE. (Though they may be easier if you are choosing Option 1 or 2, because you can reference the Option 1 or 2 instructions.)
+
+* What will at least one of the classes you're going to define be called?
+
+Company_Info
+
+* What will that class take as input to its constructor?
+
+Company_Twitter_Info will take a comapies twitter handle, company name, and company stock symbol
+
+* What will 1 instance of this class represent?
+
+1 instance of this class represents a company that will be advertised
+
+* What are 3 instance variables this class will have? What will they be called, and what information will they hold? Why are they important?
+
+1. Stock_Info
+	Information coming from either cache or api search, it will be a dictionary of all stock data relevant to that company
+2. Tweet_Data
+	Information coming from either cache or api search, it will be a dictionary of all tweet data relevant to that company
+3. Change_In_Price
+	This will be a number calculated using results from the historical stock info to calculate the change in price. Will most likley be a percetage
+
+* Explain 2 methods the class will have that are not the class constructor (__init__ method) by answering the following questions for each. 
+ONE METHOD:
+- What will the name of the method be?
+
+get_tweets_company
+
+
+- What will the method do?
+
+this method will take the company name and use to search twitter for tweets about that company
+
+- Will it take any additional input? 
+
+It will take no aditional input.
+
+- Will it return anything? Should it change anything about the instance/an instance variable? 
+
+It will return all tweets about a certain company, which will be stored in the tweet_data instance variable and cached for future use.
+
+- Why is it useful for this class definition, in this program?
+
+This program will allow me to get tweets from multiple companies and store it all in the same dictionary for easy access and manipulatin
+
+ANOTHER METHOD:
+- What will the name of the method be?
+
+get_stock_prce_company
+
+- What will the method do?
+
+Use given inpt to access yahoo finance api to pull relevnat stock data for a time frame specified in the program.
+
+- Will it take any additional input? 
+
+It will take the stock symbol of a company, as well as two dates
+
+- Will it return anything? Should it change anything about the instance/an instance variable? 
+
+It will return all the relevant stock data for the time frame for the company. It will affect the instance variable Stock_Info
+
+- Why is it useful for this class definition, in this program?
+
+It allows me to get stock info for mulitple comapnies from any time frame that I determine will be ideal
+
+[If you definitely want to have a third, feel free to answer those questions a third time, because you'll have to do so eventually. when you write documentation!]
+
+
+* What will the tables in your database be?
+
+Tweets, Stocks
+
+* What fields will each database table have? Which field of them is the primary key? You should list the fields for each database table here, e.g.
+Tweets:
+- text ... 
+(etc.)
+
+Tweets:
+- tweetID, text, user_posted, retweets&favorites, date_posted, Company
+
+Stocks
+- Price_timeA, Price_timeB, Symbol, Company, Price_Change%
+
+
+* List, in English, 2 queries you'll want to make from your database. At least one should be a JOIN. You can always change these later, but start with  ideas you're interested in and lessen the work on yourself later on! 
+(e.g. from class examples, maybe "I want to make a query that accesses the numbers of times each user has favorited tweets, and the number of times tweets that user posted have been favorited -- so I'll be joining the Tweets table and the Users table")
+
+1. Retweets&favorites, Price_Change% from the two tables joined by Company
+
+2. text, company from tweets where retweets&favorites is greater than a preset determined amount
+
+* What are at least 2 of the data processing mechanics you're planning to use? 
+
+Set comprehension, dictionary comprehension
+
+
+* Why will each of those be useful to you? What data might you use it on? 
+(e.g. "Set comprehension: I think I'm going to be looking for unique names and proper nouns in this big set of text, so I'm going to use a set comprehension"). 
+>>>This is especially important if you are doing Option 3, but it's important for everyone!<<<
+
+Set comprehension: I am going to use this to look for words that have either a positive or negative connontation.
+
+Dictionary Comprehension: I will be using this to calculate the price change % by taking the price a and price b from the get stock price method and applying a calculation 
+
+
+* What will your output look like? Will it be a .txt file? a CSV file? something else? What information will it contain? >>>This is especially important if you are doing Option 3, but it's important for everyone!<<<
+
+My Output will be a csv file. I would like to use this file to create visuals in tableau to even better display the results of the data.
