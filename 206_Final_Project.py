@@ -105,24 +105,24 @@ cur.execute('DROP TABLE IF EXISTS Tweets')
 
 table_spec = 'CREATE TABLE IF NOT EXISTS '
 table_spec += 'Tweets (tweet_id INTEGER PRIMARY KEY, '
-table_spec += 'text TEXT, user_posted TEXT, time_posted TIMESTAMP, retweets INTEGER)'
+table_spec += 'user TEXT, text TEXT, company TEXT, time_posted TIMESTAMP, retweets INTEGER)'
 cur.execute(table_spec)
 
 # After info is pulled and database is created, I will then insert all values for each instance of company into corresponding database
-statement = 'INSERT INTO Tweets VALUES (?, ?, ?, ?, ?)'
+statement = 'INSERT INTO Tweets VALUES (?, ?, ?, ?, ?, ?)'
 
 tweet_upload = []
 
 for companies in company_list:
 	tweets_temp = companies.get_tweets_company()
 	for i in range(len(tweets_temp)):
-	 	tweet_upload.append([tweets_temp[i]['id'], tweets_temp[i]['text'], companies.name, tweets_temp[i]['created_at'], tweets_temp[i]['retweet_count']])
+		tweet_upload.append([i, tweets_temp[i]['user']['screen_name'], tweets_temp[i]['text'], companies.name, tweets_temp[i]['created_at'], tweets_temp[i]['retweet_count']])
 	# pprint.pprint(tweets_temp)
 
 for t in tweet_upload:
 		cur.execute(statement, t)
 
-# conn.commit()
+conn.commit()
 
 # join these data bases by company name
 # statement = "select * from db1.Tweets a inner join db2.Stocks b on b.Tweets = a.Companies"
