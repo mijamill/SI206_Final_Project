@@ -1,22 +1,5 @@
-###### INSTRUCTIONS ###### 
-
-# Name: Michael Miller
-# Uniquename: mijamill
-# An outline for preparing your final project assignment is in this file.
-
-# Below, throughout this file, you should put comments that explain exactly what you should do for each step of your project. You should specify variable names and processes to use. For example, "Use dictionary accumulation with the list you just created to create a dictionary called tag_counts, where the keys represent tags on flickr photos and the values represent frequency of times those tags occur in the list."
-
-# You can use second person ("You should...") or first person ("I will...") or whatever is comfortable for you, as long as you are clear about what should be done.
-
-# Some parts of the code should already be filled in when you turn this in:
-# - At least 1 function which gets and caches data from 1 of your data sources, and an invocation of each of those functions to show that they work 
-# - Tests at the end of your file that accord with those instructions (will test that you completed those instructions correctly!)
-# - Code that creates a database file and tables as your project plan explains, such that your program can be run over and over again without error and without duplicate rows in your tables.
-# - At least enough code to load data into 1 of your dtabase tables (this should accord with your instructions/tests)
-
-######### END INSTRUCTIONS #########
-
-# Put all import statements you need here.
+##############################################################
+# Import Statements
 import tweepy
 from yahoo_finance import Share
 import unittest
@@ -27,7 +10,7 @@ import json
 import textblob
 import sqlite3
 import pprint
-# Begin filling in instructions....
+##############################################################
 
 ##############################################################
 #Twitter Info Setup To Test Function
@@ -40,7 +23,10 @@ auth.set_access_token(access_token, access_token_secret)
 
 #Set up Twitter API
 api = tweepy.API(auth, parser=tweepy.parsers.JSONParser())
+##############################################################
 
+##############################################################
+# Cache File Info/Setup
 CACHE_FNAME = "Final_Project_Cache.json"
 
 try:
@@ -50,15 +36,17 @@ try:
 	CACHE_DICTION = json.loads(cache_contents)
 except:
 	CACHE_DICTION = {}
+##############################################################
 
-# I will first Create instances of Class Company for each company that I will be doing research for
+##############################################################
+# Class company, created for each instance of company to be searched
 class Company():
 
 	def __init__(self, name, stock_symbol, twitter_searches):
 		self.name = name
 		self.stock_symbol = stock_symbol
 		self.list_for_twitter = twitter_searches
-		self.tweets = {}
+		self.stock = Share(stock_symbol)
 
 
 	def get_tweets_company(self):
@@ -81,10 +69,33 @@ class Company():
 		return self.tweets
 
 	def get_stock_info(self):
-		return "okay"
+		unique_identifier = "stocks_{}".format(self.name)
+	
+		#If company has already been searched, use Cached Results
+		if unique_identifier in CACHE_DICTION:
+			self.stock_info = CACHE_DICTION[unique_identifier]
 
+		#Get results for company search from API, cache them
+		else:
+			stock_info_temp = self.stock.get_historical('2017-04-17', '2017-04-21')
+			week_start = stock_info_temp[4]['Close']
+			week_end = stock_info_temp[0]['Close']
+			self.stock_info = {"Symbol": self.stock_symbol, "Start_Val": week_start, "End_Val": week_end}
+			CACHE_DICTION[unique_identifier] = self.stock_info
+			f = open(CACHE_FNAME,'w') 
+			f.write(json.dumps(CACHE_DICTION))
+			f.close()
+
+		return self.stock_info
+
+##############################################################
+
+##############################################################
 ## Class is initalized with Name of company, stock ticker, and list of twitter searchable names for the company
-company_1 = Company("Target", "TGT", ["Target", "Target Corporation"])
+company_1 = Company("Rockwell Collins", "COL", ["Rockwell Collins", "$COL"])
+company_2 = Company("Mattel", "MAT", ["Mattel", "$MAT"])
+company_3 = Company("Under Armour", "UA", ["Under Armour", "$UA"])
+company_4 = Company("Stanley Black and Decker", "SWK", ["Stanley Black and Decker", "$SWK"])
 
 #List below will contain all companies that are initialized, just like above
 company_list = [company_1]
@@ -132,7 +143,10 @@ cur.execute(statement)
 data_from_db = cur.fetchall()
 # # Finally, I will do three sepearte pulls of data, and store it in csvs which will then allow me to visualize the data in tableau
 # print(data_from_db)
+##############################################################
 
+
+##############################################################
 # Put your tests here, with any edits you now need from when you turned them in with your project plan.
 class Test_Cases(unittest.TestCase):
 	def test_cache_file(self):
@@ -178,7 +192,7 @@ class Test_Cases(unittest.TestCase):
 		result = cur.fetchall()
 		self.assertTrue(len(result[0])==5,"Testing that there are 5 columns in the Stocks db")
 		conn.close()
-
+##############################################################
 
 # Remember to invoke your tests so they will run! (Recommend using the verbosity=2 argument.)
 # if __name__ == "__main__":
