@@ -142,4 +142,4 @@ Dictionary Comprehension: I will be using this to calculate the price change % b
 
 * What will your output look like? Will it be a .txt file? a CSV file? something else? What information will it contain? >>>This is especially important if you are doing Option 3, but it's important for everyone!<<<
 
-My Output will be a csv file. I would like to use this file to create visuals in tableau to even better display the results of the data.
+My Output will be a csv file. I would like to use this file to create visuals in tableau to even better display the results of the data.o

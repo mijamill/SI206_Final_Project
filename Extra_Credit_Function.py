@@ -31,6 +31,7 @@
 
 
 # company_handle used for actual twitter search, company name used for cache
+# Code used from numerous homeworks involved with tweet data
 def get_tweets_company(company_name):
 	unique_identifier = "tweets_{}".format(company_name)
 	
