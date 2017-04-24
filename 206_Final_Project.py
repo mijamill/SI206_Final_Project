@@ -3,12 +3,11 @@
 import tweepy
 from yahoo_finance import Share
 import unittest
-import itertools
-import collections
 import twitter_info
 import json
-import textblob
+from textblob import TextBlob
 import sqlite3
+from collections import Counter
 import pprint
 ##############################################################
 
@@ -58,8 +57,10 @@ class Company():
 
 		#Get results for company search from API, cache them
 		else:
-			tweety = api.search(self.name, count = 100, include_rts = 1)
-			self.tweets = tweety['statuses']
+			tweety = api.search(self.list_for_twitter, count = 200, 
+                                 include_rts = 1)
+			tweety1 = api.search(self.name, count = 200, include_rts = 1)
+			self.tweets = tweety['statuses'] + tweety1['statuses']
 			CACHE_DICTION[unique_identifier] = self.tweets 
 			f = open(CACHE_FNAME,'w') 
 			f.write(json.dumps(CACHE_DICTION))
@@ -77,10 +78,12 @@ class Company():
 
 		#Get results for company search from API, cache them
 		else:
-			stock_info_temp = self.stock.get_historical('2017-04-17', '2017-04-21')
+			stock_info_temp = self.stock.get_historical('2017-04-17', 
+                                                         '2017-04-21')
 			week_start = stock_info_temp[4]['Close']
 			week_end = stock_info_temp[0]['Close']
-			self.stock_info = {"Symbol": self.stock_symbol, "Start_Val": week_start, "End_Val": week_end}
+			self.stock_info = {"Symbol": self.stock_symbol, 
+                               "Start_Val": week_start, "End_Val": week_end}
 			CACHE_DICTION[unique_identifier] = self.stock_info
 			f = open(CACHE_FNAME,'w') 
 			f.write(json.dumps(CACHE_DICTION))
@@ -91,43 +94,101 @@ class Company():
 ##############################################################
 
 ##############################################################
-## Class is initalized with Name of company, stock ticker, and list of twitter searchable names for the company
-company_1 = Company("Rockwell Collins", "COL", ["Rockwell Collins", "$COL"])
-company_2 = Company("Mattel", "MAT", ["Mattel", "$MAT"])
-company_3 = Company("Under Armour", "UA", ["Under Armour", "$UA"])
-company_4 = Company("Stanley Black and Decker", "SWK", ["Stanley Black and Decker", "$SWK"])
+# Additional Helper Functions
+def get_tweet_sentiment(tweet_text):
+    analysis = TextBlob(tweet_text)
+    return analysis.sentiment.polarity
+
+def average(val_pair):
+	return(float(val_pair[0])/float(val_pair[1]))
+
+def change(start, end):
+	return (((float(end)-float(start))/float(start))*100)
+##############################################################
+
+##############################################################
+## Class is initalized with Name of company, stock ticker, and list of twitter
+## searchable names for the company
+company_1 = Company("Rockwell Collins", "COL", "$COL")
+company_2 = Company("Mattel", "MAT", "$MAT")
+company_3 = Company("Under Armour", "UA", "$UAA")
+company_4 = Company("Stanley Black and Decker", "SWK", "$SWK")
 
 #List below will contain all companies that are initialized, just like above
-company_list = [company_1]
+company_list = [company_1, company_2, company_3, company_4]
 
 # For each instance, I will call the get_tweets and get_stock_info methods
-## These methods will use provided info to pull stock info and tweets related to the company, and store them in the cache file
+## These methods will use provided info to pull stock info and tweets related 
+## to the company, and store them in the cache file
 for companies in company_list:
 	companies.get_tweets_company()
 	companies.get_stock_info()
 
+##############################################################
 
-# At this point, I have all my data, and now need to initialize my cursor for the db
+
+##############################################################
+# At this point, I have all my data, and now need to initialize my cursor for 
+# the db
 conn = sqlite3.connect('Final_Project.db')
 cur = conn.cursor()
 
 # Then I will create two tables, Tweets and Stocks
 cur.execute('DROP TABLE IF EXISTS Tweets')
 
-table_spec = 'CREATE TABLE IF NOT EXISTS '
+table_spec  = 'CREATE TABLE IF NOT EXISTS '
 table_spec += 'Tweets (tweet_id INTEGER PRIMARY KEY, '
-table_spec += 'user TEXT, text TEXT, company TEXT, time_posted TIMESTAMP, retweets INTEGER)'
+table_spec += 'user TEXT, text TEXT, company TEXT, time_posted TIMESTAMP, '
+table_spec += 'retweets INTEGER, Sentiment DECIMAL)'
 cur.execute(table_spec)
 
-# After info is pulled and database is created, I will then insert all values for each instance of company into corresponding database
-statement = 'INSERT INTO Tweets VALUES (?, ?, ?, ?, ?, ?)'
+cur.execute('DROP TABLE IF EXISTS Stocks')
 
+table_spec  = 'CREATE TABLE IF NOT EXISTS '
+table_spec += 'Stocks (Company TEXT PRIMARY KEY, '
+table_spec += 'Week_Start DECIMAL, Week_End DECIMAL, Percent_Change DECIMAL)'
+cur.execute(table_spec)
+
+cur.execute('DROP TABLE IF EXISTS Stock_Tweets')
+
+table_spec  = 'CREATE TABLE IF NOT EXISTS '
+table_spec += 'Stock_Tweets (Company TEXT PRIMARY KEY, '
+table_spec += 'Stock_Tweet_Sentiment, Tweets_About_Stock)'
+cur.execute(table_spec)
+
+
+##############################################################
+
+##############################################################
+# After info is pulled and database is created, I will then insert all values 
+# for each instance of company into corresponding database
+statement = 'INSERT INTO Stocks VALUES (?, ?, ?, ?)'
+stock_upload = []
+
+for companies in company_list:
+	stock_temp = companies.get_stock_info()
+	stock_upload.append([companies.name, stock_temp['Start_Val'], 
+                         stock_temp['End_Val'], change(stock_temp['Start_Val'],
+                         stock_temp['End_Val'])])
+	# pprint.pprint(stock_temp)
+
+for s in stock_upload:
+		cur.execute(statement, s)
+
+conn.commit()
+
+statement = 'INSERT INTO Tweets VALUES (?, ?, ?, ?, ?, ?, ?)'
 tweet_upload = []
-
+id_count = 0
 for companies in company_list:
 	tweets_temp = companies.get_tweets_company()
 	for i in range(len(tweets_temp)):
-		tweet_upload.append([i, tweets_temp[i]['user']['screen_name'], tweets_temp[i]['text'], companies.name, tweets_temp[i]['created_at'], tweets_temp[i]['retweet_count']])
+		tweet_upload.append([id_count, tweets_temp[i]['user']['screen_name'], 
+                             tweets_temp[i]['text'], companies.name, 
+                             tweets_temp[i]['created_at'], 
+                             tweets_temp[i]['retweet_count'], 
+                             get_tweet_sentiment(tweets_temp[i]['text'])])
+		id_count += 1
 	# pprint.pprint(tweets_temp)
 
 for t in tweet_upload:
@@ -135,19 +196,51 @@ for t in tweet_upload:
 
 conn.commit()
 
-# join these data bases by company name
-# statement = "select * from db1.Tweets a inner join db2.Stocks b on b.Tweets = a.Companies"
-statement = "select * from Tweets"
+statement = "Select company, Sentiment from Tweets"
 cur.execute(statement)
 
-data_from_db = cur.fetchall()
-# # Finally, I will do three sepearte pulls of data, and store it in csvs which will then allow me to visualize the data in tableau
-# print(data_from_db)
-##############################################################
+sentiment_company = cur.fetchall()
+sentiment_by_company = {}
+for i in range(len(sentiment_company)):
+	if sentiment_company[i][0] not in sentiment_by_company.keys():
+		sentiment_by_company[sentiment_company[i][0]] = [sentiment_company[i][1], 1]
+	else:
+		sentiment_by_company[sentiment_company[i][0]][0] += sentiment_company[i][1]
+		sentiment_by_company[sentiment_company[i][0]][1] += 1
 
 
+statement = 'INSERT INTO Stock_Tweets VALUES (?, ?, ?)'
+tweet_upload = []
+id_count = 0
+Id_val = 0
+for companies in company_list:
+	tweet_count = 0
+	tweets_temp = companies.get_tweets_company()
+	check_string = companies.list_for_twitter
+	print(check_string)
+	sentiment_temp = 0
+	for i in range(len(tweets_temp)):
+		c = Counter(tweets_temp[i]['text'].split())
+		if c[check_string] > 0:
+			print("Found " + check_string)
+			tweet_count += 1
+			sentiment_temp += get_tweet_sentiment(tweets_temp[i]['text'])
+		if tweet_count == 0:
+			score = None
+		else:
+			score = average([sentiment_temp, tweet_count])
+	tweet_upload.append([companies.name, score, tweet_count])
+
+for t in tweet_upload:
+		cur.execute(statement, t)
+
+conn.commit()
+
 ##############################################################
-# Put your tests here, with any edits you now need from when you turned them in with your project plan.
+
+##############################################################
+# Put your tests here, with any edits you now need from when you turned them 
+# in with your project plan.
 class Test_Cases(unittest.TestCase):
 	def test_cache_file(self):
 		fpt = open("Final_Project_Cache.json","r")
