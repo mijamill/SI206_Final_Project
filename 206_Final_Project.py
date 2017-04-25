@@ -10,11 +10,12 @@ from textblob import TextBlob
 import sqlite3
 from collections import Counter
 import pprint
+from functools import reduce
 
 ##############################################################################
 
 ##############################################################################
-#Twitter Info Setup To Test Function
+#Twitter Info Setup To Test Function, (Cite: Project 3)
 
 consumer_key = twitter_info.consumer_key
 consumer_secret = twitter_info.consumer_secret
@@ -29,7 +30,7 @@ api = tweepy.API(auth, parser=tweepy.parsers.JSONParser())
 ##############################################################################
 
 ##############################################################################
-# Cache File Info/Setup
+# Cache File Info/Setup, (Cite: Project 3)
 
 CACHE_FNAME = "Final_Project_Cache.json"
 
@@ -54,7 +55,7 @@ class Company():
 		self.stock = Share(stock_symbol)
 
 
-	def get_tweets_company(self):
+	def get_tweets_company(self): #(Cite: Project 3)
 		unique_identifier = "tweets_{}".format(self.name)
 	
 	#If company has already been searched, use Cached Results
@@ -75,7 +76,7 @@ class Company():
 		#Return tweets from either cache or API search
 		return self.tweets
 
-	def get_stock_info(self):
+	def get_stock_info(self): #(Cite: Yahoo Finance API Documentation)
 		unique_identifier = "stocks_{}".format(self.name)
 	
 		#If company has already been searched, use Cached Results
@@ -102,12 +103,9 @@ class Company():
 ##############################################################################
 # Additional Helper Functions
 
-def get_tweet_sentiment(tweet_text):
+def get_tweet_sentiment(tweet_text): #(Cite: TextBlob Documentation)
     analysis = TextBlob(tweet_text)
     return analysis.sentiment.polarity
-
-def average(val_pair):
-	return(float(val_pair[0])/float(val_pair[1]))
 
 def change(start, end):
 	return (((float(end)-float(start))/float(start))*100)
@@ -137,12 +135,12 @@ for companies in company_list:
 
 ##############################################################################
 # At this point, I have all my data, and now need to initialize my cursor for 
-# the db
+# the db (Cite: Project 3)
 
 conn = sqlite3.connect('Final_Project.db')
 cur = conn.cursor()
 
-# Then I will create two tables, Tweets and Stocks
+# Then I will create three tables, Tweets, Stocks, Stock_Tweets
 cur.execute('DROP TABLE IF EXISTS Tweets')
 
 table_spec  = 'CREATE TABLE IF NOT EXISTS '
@@ -162,14 +160,14 @@ cur.execute('DROP TABLE IF EXISTS Stock_Tweets')
 
 table_spec  = 'CREATE TABLE IF NOT EXISTS '
 table_spec += 'Stock_Tweets (Company TEXT PRIMARY KEY, '
-table_spec += 'Stock_Tweet_Sentiment, Tweets_About_Stock)'
+table_spec += 'Stock_Tweet_Sentiment, Tweets_About_Stock, Tweets_About_Company)'
 cur.execute(table_spec)
 
 ##############################################################################
 
 ##############################################################################
 # After info is pulled and database is created, I will then insert all values 
-# for each instance of company into corresponding database
+# for each instance of company into corresponding database (Cite: Project 3)
 
 statement = 'INSERT INTO Stocks VALUES (?, ?, ?, ?)'
 upload = []
@@ -219,7 +217,7 @@ for i in range(len(sentiment_company)):
 		sentiment_by_company[name_key][1] += 1
 
 
-statement = 'INSERT INTO Stock_Tweets VALUES (?, ?, ?)'
+statement = 'INSERT INTO Stock_Tweets VALUES (?, ?, ?, ?)'
 upload = []
 id_count = 0
 Id_val = 0
@@ -228,31 +226,43 @@ for companies in company_list:
 	count = 0
 	temp = companies.get_tweets_company()
 	check = companies.list_for_twitter
-	sent = 0
-
+	list_of_sent = []
 	for i in range(len(temp)):
 		c = Counter(temp[i]['text'].split())
 
 		if c[check] > 0:
-			count += 1
-			sent += get_tweet_sentiment(temp[i]['text'])
-		if count == 0:
-			score = None
-		else:
-			score = average([sent, count])
-
-	upload.append([companies.name, score, count])
+			list_of_sent.append(get_tweet_sentiment(temp[i]['text']))
+	total_count = i
+	score = reduce(lambda x, y: x + y, list_of_sent) / len(list_of_sent)
+	upload.append([companies.name, score, len(list_of_sent), total_count])
 
 for t in upload:
 		cur.execute(statement, t)
 
 conn.commit()
 
+Statement = "Select Stock_Tweets.Company, Stock_Tweets.Stock_Tweet_Sentiment,"
+Statement = Statement + " Stocks.Percent_Change From Stocks, Stock_Tweets "
+Statement = Statement + "Where Stocks.Company == Stock_Tweets.Company"
+
+cur.execute(Statement)
+
+Stock_Analysis = cur.fetchall()
+
+
+Statement = "Select Distinct(Company) From Tweets Where retweets > 50"
+
+cur.execute(Statement)
+
+viral_Tweets = cur.fetchall()
+
+
+
 ##############################################################################
 
 ##############################################################################
 # Put your tests here, with any edits you now need from when you turned them 
-# in with your project plan.
+# in with your project plan. (Cite: Project 3)
 
 class Test_Cases(unittest.TestCase):
 	def test_cache_file(self):
@@ -261,18 +271,6 @@ class Test_Cases(unittest.TestCase):
 		fpt.close()
 		obj = json.loads(fpt_str)
 		self.assertEqual(type(obj),type({"hi":"bye"}))
-	def test_get_stock_data(self):
-		company_1 =  Company("Target", "TGT", ["Target", 
-											   "Target Corporation"])
-		stock_info = company_1.get_stock_data()
-		#Based on function I am planning on using, the data returned should be
-		# a list of dictionaries
-		self.assertEqual(type(stock_info), type([{'A': 1}, {'B': 2}]))
-	def test_get_tweets(self):
-		company_1 =  Company("Target", "TGT", ["Target", "Target Corporation"])
-		tweet_info = company_1.get_tweet_data()
-		self.assertEqual((type(tweet_info), type({'a': "hello"})), "Testing " 
-						 + "that tweet data is returned in dictionary format")
 	def test_tweets_db1(self):
 		conn = sqlite3.connect('Final_Project.db')
 		cur = conn.cursor()
@@ -286,7 +284,7 @@ class Test_Cases(unittest.TestCase):
 		cur = conn.cursor()
 		cur.execute('SELECT * FROM Tweets');
 		result = cur.fetchall()
-		self.assertTrue(len(result[0])==6,"Testing that there are 6 columns "
+		self.assertTrue(len(result[0])==7,"Testing that there are 7 columns "
 										  + "in the Tweets db")
 		conn.close()
 	def test_stocks_db1(self):
@@ -300,13 +298,31 @@ class Test_Cases(unittest.TestCase):
 	def test_stocks_db2(self):
 		conn = sqlite3.connect('Final_Project.db')
 		cur = conn.cursor()
-		cur.execute('SELECT * FROM Tweets');
+		cur.execute('SELECT * FROM Stocks');
 		result = cur.fetchall()
-		self.assertTrue(len(result[0])==5,"Testing that there are 5 columns "
+		self.assertTrue(len(result[0])==4,"Testing that there are 4 columns "
 										  + "in the Stocks db")
 		conn.close()
+	def test_get_tweet_info(self):
+		A = Company("Target", "TGT", ["$TGT"])
+		return self.assertTrue(type(A.get_tweets_company == list))
+	def test_get_stock_info(self):
+		A = Company("Target", "TGT", ["$TGT"])
+		return self.assertTrue(type(A.get_stock_info() == dict))
+	def test_get_tweet_sent(self):
+		num = get_tweet_sentiment("I am so happy its crazy")
+		return self.assertTrue(type(num) == float)
+	def test_get_tweet_sent1(self):
+		num = get_tweet_sentiment("I am so happy its crazy")
+		return self.assertTrue(num <= 1 and num >= -1)
+	def test_get_change(self):
+		num = change(1,2)
+		return self.assertTrue(type(num) == float)
+	def test_change1(self):
+		num = change(1,2)
+		return self.assertTrue(num == 100.0)
 ##############################################################
 
-## Invoke testing
-# if __name__ == "__main__":
-# 	unittest.main(verbosity=2)
+# Invoke testing
+if __name__ == "__main__":
+	unittest.main(verbosity=2)
